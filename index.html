@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apavan Concreto - Controle de Slump</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        input:focus { outline: none; border-color: #2563eb; ring: 2px #2563eb; }
+        .view { display: none; }
+        .view.active { display: block; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 p-4">
+
+    <div class="max-w-4xl mx-auto">
+        <!-- Header -->
+        <header class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-2">
+                <div class="bg-blue-600 p-2 rounded-lg text-white">
+                    <i class="fa-solid fa-droplet text-xl"></i>
+                </div>
+                <h1 class="font-black text-xl tracking-tighter uppercase">Apavan Concreto</h1>
+            </div>
+        </header>
+
+        <!-- DASHBOARD VIEW -->
+        <div id="view-dashboard" class="view active fade-in space-y-4">
+            <div class="bg-blue-600 p-5 rounded-2xl text-white flex justify-between items-center shadow-lg">
+                <div>
+                    <h2 id="display-project-name" class="font-bold text-lg">Carregando...</h2>
+                    <p id="display-project-location" class="text-blue-100 text-xs">Carregando...</p>
+                </div>
+                <button onclick="changeView('settings')" class="bg-white/20 p-2 rounded-lg hover:bg-white/30 transition-colors">
+                    <i class="fa-solid fa-gear"></i>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3">
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 text-center">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase">Total</p>
+                    <p id="stat-total" class="text-xl font-bold">0</p>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 text-center">
+                    <p class="text-[10px] font-bold text-green-400 uppercase">OK</p>
+                    <p id="stat-ok" class="text-xl font-bold text-green-600">0</p>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 text-center">
+                    <p class="text-[10px] font-bold text-red-400 uppercase">Falha</p>
+                    <p id="stat-fail" class="text-xl font-bold text-red-600">0</p>
+                </div>
+            </div>
+
+            <button onclick="changeView('entry')" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-md hover:bg-blue-700">
+                <i class="fa-solid fa-plus"></i> NOVO REGISTRO
+            </button>
+            <button onclick="changeView('history')" class="w-full bg-slate-800 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-slate-900">
+                <i class="fa-solid fa-history"></i> HISTÓRICO
+            </button>
+            <!-- Alteração solicitada: Texto do botão alterado para EXPORTAR PDF -->
+            <button id="btn-print" onclick="exportToPDF()" class="hidden w-full bg-white border border-slate-200 py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm hover:bg-slate-50">
+                <i class="fa-solid fa-file-pdf"></i> EXPORTAR PDF
+            </button>
+        </div>
+
+        <!-- SETTINGS VIEW -->
+        <div id="view-settings" class="view fade-in space-y-6 bg-white p-6 rounded-2xl shadow-md">
+            <div class="flex items-center justify-between">
+                <button onclick="changeView('dashboard')" class="flex items-center gap-2 text-slate-500"><i class="fa-solid fa-chevron-left"></i> Voltar</button>
+                <h3 class="font-bold text-sm uppercase text-slate-400 tracking-widest">Configurações</h3>
+            </div>
+            
+            <div class="space-y-3">
+                <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Dados da Obra Atual</label>
+                <input id="input-project-name" class="w-full p-3 bg-slate-50 border rounded-xl" placeholder="Nome da Obra">
+                <input id="input-project-location" class="w-full p-3 bg-slate-50 border rounded-xl" placeholder="Endereço">
+                <input id="input-project-client" class="w-full p-3 bg-slate-50 border rounded-xl" placeholder="Cliente">
+            </div>
+
+            <div class="pt-4 space-y-4 border-t border-slate-100">
+                <button onclick="saveSettings()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700">SALVAR ALTERAÇÕES</button>
+                
+                <div class="bg-red-50 p-4 rounded-xl border border-red-100 space-y-3">
+                    <p class="text-[10px] font-black text-red-400 uppercase tracking-tighter text-center">Zona de Perigo</p>
+                    <button onclick="startNewProject()" class="w-full bg-red-600 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-red-700">
+                        <i class="fa-solid fa-rotate-left"></i> INICIAR NOVA OBRA
+                    </button>
+                    <p class="text-[9px] text-red-500 text-center italic">Isso apagará todos os dados da obra e registros atuais permanentemente.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ENTRY VIEW -->
+        <div id="view-entry" class="view fade-in space-y-6 bg-white p-6 rounded-2xl shadow-md">
+            <button onclick="changeView('dashboard')" class="flex items-center gap-2 text-slate-500 mb-2"><i class="fa-solid fa-chevron-left"></i> Voltar</button>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase">Slump Alvo (mm)</label>
+                    <input id="entry-target" type="number" class="w-full p-3 bg-slate-50 border rounded-xl" value="100">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase">Tolerância ± (mm)</label>
+                    <input id="entry-tolerance" type="number" class="w-full p-3 bg-slate-50 border rounded-xl" value="20">
+                </div>
+            </div>
+
+            <div class="flex flex-col items-center gap-3">
+                <div onclick="document.getElementById('file-input').click()" id="photo-preview-container" class="w-full h-40 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center cursor-pointer overflow-hidden relative group">
+                    <i class="fa-solid fa-camera text-slate-300 text-3xl mb-2"></i>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase">Foto do Slump</p>
+                </div>
+                <input id="file-input" type="file" accept="image/*" capture="environment" class="hidden" onchange="handlePhoto(this)">
+            </div>
+
+            <div id="slump-input-container" class="p-6 rounded-2xl text-center border-2 border-dashed bg-blue-50 border-blue-200">
+                <p id="slump-label" class="font-bold mb-2 text-blue-800 uppercase text-xs">SLUMP MEDIDO (mm)</p>
+                <input id="entry-measured" type="number" oninput="checkSlumpParams()" class="w-32 text-4xl font-black text-center p-4 rounded-xl border-2 border-blue-400 text-blue-700 outline-none">
+            </div>
+
+            <div id="alert-container" class="hidden bg-red-50 p-4 rounded-xl border border-red-200 space-y-3">
+                <div class="flex items-center gap-2 text-red-700 font-bold text-sm uppercase">
+                    <i class="fa-solid fa-triangle-exclamation"></i> Alerta de Parâmetros
+                </div>
+                <div id="alert-text" class="text-[11px] text-red-600 leading-relaxed"></div>
+            </div>
+
+            <div id="correction-container" class="hidden bg-slate-50 p-4 rounded-xl border border-blue-100 space-y-4">
+                <p class="text-xs font-black text-slate-500 uppercase flex items-center gap-1"><i class="fa-solid fa-circle-plus"></i> Correção</p>
+                <div class="grid grid-cols-3 gap-2" id="correction-buttons">
+                    <button onclick="setAction('water')" id="btn-water" class="py-2 px-1 text-[10px] font-bold rounded-lg border bg-white text-slate-500 border-slate-200">ÁGUA (L)</button>
+                    <button onclick="setAction('additive')" id="btn-additive" class="py-2 px-1 text-[10px] font-bold rounded-lg border bg-white text-slate-500 border-slate-200">ADITIVO (ml)</button>
+                    <button onclick="setAction('none')" id="btn-none" class="py-2 px-1 text-[10px] font-bold rounded-lg border bg-slate-400 text-white border-slate-400">SEM AÇÃO</button>
+                </div>
+
+                <div id="correction-fields" class="hidden grid grid-cols-2 gap-3">
+                    <div class="space-y-1">
+                        <label class="text-[9px] font-bold text-slate-400 uppercase">Acréscimo</label>
+                        <input id="entry-action-amount" type="number" class="w-full p-2 bg-white border rounded-lg text-sm" placeholder="Qtd">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-[9px] font-bold text-slate-400 uppercase">Slump Final (mm)</label>
+                        <input id="entry-final-measured" type="number" class="w-full p-2 bg-white border border-green-300 rounded-lg font-bold text-green-700 text-sm" placeholder="Final">
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase">Peça</label>
+                    <select id="entry-location" class="w-full p-3 bg-slate-50 border rounded-xl outline-none">
+                        <option value="Laje">Laje</option>
+                        <option value="Viga">Viga</option>
+                        <option value="Pilar">Pilar</option>
+                        <option value="Bloco">Bloco</option>
+                        <option value="Sapata">Sapata</option>
+                        <option value="Estaca">Estaca</option>
+                    </select>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase">Pavimento</label>
+                    <input id="entry-level" class="w-full p-3 bg-slate-50 border rounded-xl" placeholder="Ex: R/C">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <input id="entry-truck" class="p-3 bg-slate-50 border rounded-xl text-sm uppercase font-bold" placeholder="Placa/Cam">
+                <input id="entry-invoice" class="p-3 bg-slate-50 border rounded-xl text-sm" placeholder="Nota Fiscal">
+            </div>
+
+            <button onclick="saveEntry()" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform">SALVAR ENSAIO</button>
+        </div>
+
+        <!-- HISTORY VIEW -->
+        <div id="view-history" class="view fade-in space-y-4">
+            <div class="flex items-center justify-between mb-4">
+                <button onclick="changeView('dashboard')" class="flex items-center gap-2 text-slate-500"><i class="fa-solid fa-chevron-left"></i> Voltar</button>
+                <button onclick="clearHistory()" id="btn-clear-history" class="hidden flex items-center gap-1 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-xs font-bold border border-red-100">
+                    <i class="fa-solid fa-eraser"></i> LIMPAR HISTÓRICO
+                </button>
+            </div>
+
+            <div id="history-list" class="space-y-4">
+                <!-- Itens injetados via JS -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ESTADO DO APLICATIVO
+        let state = {
+            entries: [],
+            project: { name: 'Obra Exemplo', location: 'Endereço da Obra', client: 'Empresa' },
+            currentPhoto: null,
+            currentAction: 'none'
+        };
+
+        // NAVEGAÇÃO
+        window.changeView = function(viewId) {
+            const views = document.querySelectorAll('.view');
+            for (let i = 0; i < views.length; i++) {
+                views[i].classList.remove('active');
+            }
+            const targetView = document.getElementById('view-' + viewId);
+            if (targetView) targetView.classList.add('active');
+            
+            if (viewId === 'dashboard') renderDashboard();
+            if (viewId === 'history') renderHistory();
+            if (viewId === 'entry') resetEntryForm();
+        };
+
+        // PERSISTÊNCIA
+        function loadData() {
+            try {
+                const savedEntries = localStorage.getItem('concrete_records');
+                const savedProject = localStorage.getItem('concrete_project');
+                if (savedEntries) state.entries = JSON.parse(savedEntries);
+                if (savedProject) state.project = JSON.parse(savedProject);
+            } catch (e) {
+                console.error("Erro ao ler dados", e);
+            }
+            
+            document.getElementById('input-project-name').value = state.project.name || '';
+            document.getElementById('input-project-location').value = state.project.location || '';
+            document.getElementById('input-project-client').value = state.project.client || '';
+        }
+
+        function saveData() {
+            localStorage.setItem('concrete_records', JSON.stringify(state.entries));
+            localStorage.setItem('concrete_project', JSON.stringify(state.project));
+        }
+
+        // RENDERIZAÇÃO DASHBOARD
+        function renderDashboard() {
+            document.getElementById('display-project-name').innerText = state.project.name || 'Nova Obra';
+            document.getElementById('display-project-location').innerText = state.project.location || 'Endereço não definido';
+            document.getElementById('stat-total').innerText = state.entries.length;
+            const ok = state.entries.filter(e => e.status === 'approved').length;
+            document.getElementById('stat-ok').innerText = ok;
+            document.getElementById('stat-fail').innerText = state.entries.length - ok;
+            document.getElementById('btn-print').style.display = state.entries.length > 0 ? 'flex' : 'none';
+        }
+
+        window.saveSettings = function() {
+            state.project.name = document.getElementById('input-project-name').value;
+            state.project.location = document.getElementById('input-project-location').value;
+            state.project.client = document.getElementById('input-project-client').value;
+            saveData();
+            window.changeView('dashboard');
+        };
+
+        window.startNewProject = function() {
+            if (confirm("Deseja resetar a obra atual? Todos os registros serão apagados.")) {
+                state.entries = [];
+                state.project = { name: 'Nova Obra', location: '', client: '' };
+                saveData();
+                loadData();
+                window.changeView('dashboard');
+            }
+        };
+
+        // FORMULÁRIO DE ENSAIO
+        function resetEntryForm() {
+            state.currentPhoto = null;
+            state.currentAction = 'none';
+            document.getElementById('photo-preview-container').innerHTML = '<i class="fa-solid fa-camera text-slate-300 text-3xl mb-2"></i><p class="text-[10px] font-bold text-slate-400 uppercase">Foto do Slump</p>';
+            document.getElementById('entry-measured').value = '';
+            document.getElementById('entry-truck').value = '';
+            document.getElementById('entry-invoice').value = '';
+            document.getElementById('entry-action-amount').value = '';
+            document.getElementById('entry-final-measured').value = '';
+            window.setAction('none');
+            window.checkSlumpParams();
+        }
+
+        window.handlePhoto = function(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.src = e.target.result;
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        const maxWidth = 500;
+                        const scale = maxWidth / img.width;
+                        canvas.width = maxWidth;
+                        canvas.height = img.height * scale;
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        state.currentPhoto = canvas.toDataURL('image/jpeg', 0.8);
+                        document.getElementById('photo-preview-container').innerHTML = '<img src="' + state.currentPhoto + '" class="w-full h-full object-cover">';
+                    };
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        };
+
+        window.checkSlumpParams = function() {
+            const measured = Number(document.getElementById('entry-measured').value);
+            const target = Number(document.getElementById('entry-target').value);
+            const tol = Number(document.getElementById('entry-tolerance').value);
+            const isOut = measured > 0 && (measured < (target - tol) || measured > (target + tol));
+            
+            document.getElementById('alert-container').classList.toggle('hidden', !isOut);
+            document.getElementById('correction-container').classList.toggle('hidden', !(measured > 0 && measured < (target - tol)));
+            
+            if (isOut) {
+                document.getElementById('alert-text').innerText = measured > (target + tol) ? 'Slump acima do limite permitido (Concreto fluido demais).' : 'Slump abaixo do limite permitido (Concreto seco demais).';
+            }
+        };
+
+        window.setAction = function(action) {
+            state.currentAction = action;
+            ['water', 'additive', 'none'].forEach(a => {
+                const btn = document.getElementById('btn-' + a);
+                btn.className = "py-2 px-1 text-[10px] font-bold rounded-lg border " + (a === action ? (a === 'water' ? "bg-blue-600 text-white border-blue-600" : (a === 'additive' ? "bg-purple-600 text-white border-purple-600" : "bg-slate-500 text-white border-slate-500")) : "bg-white text-slate-500 border-slate-200");
+            });
+            document.getElementById('correction-fields').style.display = action === 'none' ? 'none' : 'grid';
+        };
+
+        window.saveEntry = function() {
+            const m = document.getElementById('entry-measured').value;
+            const t = document.getElementById('entry-truck').value;
+            if (!m || !t) return alert("Por favor, preencha o valor do Slump e a identificação do Caminhão.");
+
+            const amount = document.getElementById('entry-action-amount').value;
+            const final = state.currentAction !== 'none' ? Number(document.getElementById('entry-final-measured').value || m) : Number(m);
+            const target = Number(document.getElementById('entry-target').value);
+            const tol = Number(document.getElementById('entry-tolerance').value);
+
+            // Tradução da ação para o relatório
+            let actionText = "-";
+            if (state.currentAction === 'water') actionText = `Água: ${amount}L`;
+            else if (state.currentAction === 'additive') actionText = `Adit.: ${amount}ml`;
+
+            state.entries.unshift({
+                id: Date.now(),
+                date: new Date().toLocaleString('pt-BR'),
+                truckId: t,
+                invoice: document.getElementById('entry-invoice').value || '-',
+                measured: m,
+                correction: actionText,
+                finalMeasured: final,
+                status: Math.abs(final - target) <= tol ? 'approved' : 'rejected',
+                location: document.getElementById('entry-location').value,
+                level: document.getElementById('entry-level').value || '-',
+                photo: state.currentPhoto
+            });
+            saveData();
+            window.changeView('dashboard');
+        };
+
+        // HISTÓRICO
+        function renderHistory() {
+            const list = document.getElementById('history-list');
+            if (state.entries.length === 0) {
+                list.innerHTML = '<div class="text-center text-slate-300 py-10"><i class="fa-solid fa-folder-open text-4xl mb-2"></i><p>Nenhum registro encontrado.</p></div>';
+                return;
+            }
+            list.innerHTML = state.entries.map(e => `
+                <div class="bg-white p-4 rounded-xl shadow-sm border flex gap-4 fade-in">
+                    <div class="w-16 h-16 rounded bg-slate-100 overflow-hidden flex-shrink-0 border">
+                        ${e.photo ? `<img src="${e.photo}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-slate-300"><i class="fa-solid fa-image"></i></div>`}
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex justify-between items-start">
+                            <span class="font-bold text-slate-700 uppercase text-xs">${e.truckId}</span>
+                            <span class="text-xs font-black px-2 py-0.5 rounded-full ${e.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${e.finalMeasured}mm</span>
+                        </div>
+                        <p class="text-[10px] text-slate-500 mt-1">${e.date} | ${e.location}</p>
+                        <p class="text-[9px] font-bold text-blue-600 mt-0.5">Correção: ${e.correction}</p>
+                    </div>
+                    <button onclick="deleteEntry(${e.id})" class="text-slate-300 hover:text-red-500 transition-colors"><i class="fa-solid fa-trash-can"></i></button>
+                </div>
+            `).join('');
+        }
+
+        window.deleteEntry = function(id) {
+            if (confirm("Deseja realmente apagar este registro?")) {
+                state.entries = state.entries.filter(e => e.id !== id);
+                saveData();
+                renderHistory();
+            }
+        };
+
+        window.clearHistory = function() {
+            if (confirm("Limpar todo o histórico de ensaios desta obra?")) {
+                state.entries = [];
+                saveData();
+                renderHistory();
+            }
+        };
+
+        // FUNÇÃO DE EXPORTAÇÃO (IMPRESSÃO/PDF)
+        window.exportToPDF = function() {
+            const printWindow = window.open('', '_blank');
+            const project = state.project;
+            const entries = state.entries;
+            const dateStr = new Date().toLocaleDateString('pt-BR');
+
+            let rowsHtml = entries.map(e => `
+                <tr>
+                    <td>${e.date}</td>
+                    <td>${e.truckId}</td>
+                    <td>${e.invoice}</td>
+                    <td>${e.location} / ${e.level}</td>
+                    <td>${e.measured}mm</td>
+                    <td style="color: #2563eb; font-weight: bold;">${e.correction}</td>
+                    <td class="${e.status === 'approved' ? 'status-ok' : 'status-fail'}">${e.finalMeasured}mm</td>
+                    <td>${e.photo ? `<img src="${e.photo}" style="width:50px; height:50px; object-fit:cover; border-radius:4px;">` : '-'}</td>
+                </tr>
+            `).join('');
+
+            const content = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Relatório de Controle de Concreto</title>
+                    <style>
+                        body { font-family: sans-serif; padding: 30px; color: #1e293b; line-height: 1.4; }
+                        .header { border-bottom: 3px solid #2563eb; padding-bottom: 15px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: flex-end; }
+                        .header h1 { margin: 0; color: #2563eb; font-size: 24px; text-transform: uppercase; }
+                        .project-info { background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #e2e8f0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+                        .info-item b { font-size: 10px; text-transform: uppercase; color: #64748b; display: block; }
+                        table { width: 100%; border-collapse: collapse; font-size: 10px; margin-top: 10px; }
+                        th, td { border: 1px solid #e2e8f0; padding: 8px; text-align: left; }
+                        th { background: #f1f5f9; color: #475569; font-weight: bold; text-transform: uppercase; font-size: 8px; }
+                        .status-ok { color: #15803d; font-weight: bold; }
+                        .status-fail { color: #b91c1c; font-weight: bold; }
+                        .footer { margin-top: 40px; font-size: 10px; color: #94a3b8; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 20px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <div>
+                            <h1>Relatório Slump Test</h1>
+                            <p style="margin: 5px 0 0 0; font-size: 12px; font-weight: bold;">Apavan Concreto</p>
+                        </div>
+                        <div style="text-align: right; font-size: 11px;">Data de Emissão: ${dateStr}</div>
+                    </div>
+
+                    <div class="project-info">
+                        <div class="info-item"><b>Obra</b> ${project.name}</div>
+                        <div class="info-item"><b>Localização</b> ${project.location}</div>
+                        <div class="info-item"><b>Cliente</b> ${project.client}</div>
+                        <div class="info-item"><b>Total de Ensaios</b> ${entries.length}</div>
+                    </div>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Data/Hora</th>
+                                <th>Caminhão</th>
+                                <th>NF</th>
+                                <th>Peça/Nível</th>
+                                <th>Slump Inicial</th>
+                                <th>Correção Aplicada</th>
+                                <th>Slump Final</th>
+                                <th>Foto</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rowsHtml}
+                        </tbody>
+                    </table>
+
+                    <div class="footer">
+                        Este relatório técnico detalha os ensaios de consistência realizados em obra para controle de qualidade.
+                    </div>
+
+                    <script>
+                        window.onload = function() {
+                            setTimeout(() => {
+                                window.print();
+                            }, 500);
+                        }
+                    <\/script>
+                </body>
+                </html>
+            `;
+
+            printWindow.document.open();
+            printWindow.document.write(content);
+            printWindow.document.close();
+        };
+
+        // INICIAR
+        loadData();
+        renderDashboard();
+    </script>
+</body>
+</html>
